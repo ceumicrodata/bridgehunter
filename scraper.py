@@ -34,7 +34,7 @@ def bridges_in_county(state, county):
 
 def rivers():
     url = '%scategory/waterway/' % BASE_URL
-    return RIVER_REGEX.findall(urlopen(url).read)
+    return RIVER_REGEX.findall(urlopen(url).read())
 
 def bridges_on_river(river):
     url = '%scategory/waterway/%s/' % (BASE_URL, river)
