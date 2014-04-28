@@ -1,9 +1,12 @@
 import scraperwiki
 import lxml.html
 import re
+from urllib2 import urlopen
 
 BASE_URL = 'http://bridgehunter.com/'
 SLUG_REGEX = re.compile('^[A-Za-z_]\w{0,64}$')
+RIVER_REGEX = re.compile('<a href="/category/waterway/(.*)/"')
+BRIDGE_REGEX = re.compile("<div class=\"x\"><a href=\"/(.*)/\" class=\"name\">")
 
 try:
     import unidecode
@@ -29,6 +32,13 @@ def bridges_in_county(state, county):
 
     return [link.attrib['href'].split('/')[-2] for link in root.cssselect('div.x a.name')]
 
+def rivers():
+    url = '%scategory/waterway/' % BASE_URL
+    return RIVER_REGEX.findall(urlopen(url).read)
+
+def bridges_on_river(river):
+    url = '%scategory/waterway/%s/' % (BASE_URL, river)
+    return [dict(river=river, state=bridge.split('/')[0], county=bridge.split('/')[1], bridge=bridge.split('/')[2]) for bridge in BRIDGE_REGEX.findall(urlopen(url).read())]
 
 def counties_in_state(state):
     '''
@@ -67,11 +77,14 @@ def bridge_data(state, county, bridge):
     return data
 
 
-state = 'nj'
-for county in counties_in_state(state):
-    for bridge in bridges_in_county(state, county): 
+for river in rivers():
+    for row in bridges_on_river(river):
+        state = row['state']
+        county = row['county']
+        bridge = row['bridge']
         try:
             data = bridge_data(state, county, bridge)
+            data['river'] = river
             if data is not None:
                 scraperwiki.sqlite.save(unique_keys=['state', 'county', 'bridge'], data=data)
 
